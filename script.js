@@ -12,7 +12,8 @@ let gameState = {
     timeRemaining: 30,
     gameInProgress: false,
     selectedAnswer: null,
-    results: []
+    results: [],
+    gameListener: null // Para Firebase listener
 };
 
 // Referencias a elementos del DOM
@@ -30,10 +31,82 @@ const screens = {
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     showScreen('home');
+    
+    // Verificar si Firebase está disponible
+    if (typeof window.firebaseManager === 'undefined') {
+        console.error('Firebase no está cargado correctamente');
+    }
 });
 
-// Configurar event listeners
-function initializeEventListeners() {
+// Configurar sincronizacion entre pestañas
+function setupStorageSync() {
+    // Escuchar cambios en localStorage desde otras pestañas
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'gameSession' && e.newValue) {
+            const gameData = JSON.parse(e.newValue);
+            
+            // Solo sincronizar si estamos en el lobby correcto
+            if (gameState.gameCode && gameData.code === gameState.gameCode) {
+                gameState.players = gameData.players;
+                
+                // Actualizar UI segun el tipo de usuario
+                if (gameState.isHost && screens.hostLobby.classList.contains('active')) {
+                    updateHostLobby();
+                } else if (!gameState.isHost && screens.playerLobby.classList.contains('active')) {
+                    updatePlayerLobby();
+                }
+            }
+        }
+    });
+
+    // Polling como respaldo para localhost (cada 2 segundos)
+    setInterval(() => {
+        if (gameState.gameCode && !gameState.gameInProgress) {
+            syncGameState();
+        }
+    }, 2000);
+}
+
+// Sincronizar estado del juego manualmente
+function syncGameState() {
+    const savedGame = localStorage.getItem('gameSession');
+    if (savedGame) {
+        try {
+            const gameData = JSON.parse(savedGame);
+            if (gameData.code === gameState.gameCode) {
+                const currentPlayerCount = gameState.players.length;
+                gameState.players = gameData.players;
+                
+                // Actualizar UI solo si hay cambios
+                if (currentPlayerCount !== gameState.players.length) {
+                    if (gameState.isHost && screens.hostLobby.classList.contains('active')) {
+                        updateHostLobby();
+                    } else if (!gameState.isHost && screens.playerLobby.classList.contains('active')) {
+                        updatePlayerLobby();
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error al sincronizar estado del juego:', error);
+        }
+    }
+}
+
+// Actualizar localStorage y notificar cambios
+function updateGameSession() {
+    const gameData = {
+        code: gameState.gameCode,
+        name: gameState.gameName,
+        host: gameState.players.find(p => p.isHost)?.name || '',
+        players: gameState.players,
+        timestamp: Date.now()
+    };
+    
+    localStorage.setItem('gameSession', JSON.stringify(gameData));
+    
+    // Disparar evento personalizado para sincronizacion inmediata
+    window.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameData }));
+}
     // Pantalla principal
     document.getElementById('create-game-btn').addEventListener('click', () => showScreen('createGame'));
     document.getElementById('join-game-btn').addEventListener('click', () => showScreen('joinGame'));
@@ -124,7 +197,7 @@ function generateGameCode() {
 }
 
 // Crear nueva partida
-function createGame() {
+async function createGame() {
     const username = document.getElementById('host-username').value.trim();
     const gameName = document.getElementById('game-name').value.trim();
     const maxPlayers = parseInt(document.getElementById('max-players').value);
@@ -134,35 +207,60 @@ function createGame() {
         return;
     }
 
-    // Configurar estado del juego
-    gameState.isHost = true;
-    gameState.gameCode = generateGameCode();
-    gameState.gameName = gameName;
-    gameState.username = username;
-    gameState.maxPlayers = maxPlayers;
-    gameState.players = [{
-        id: 'host',
-        name: username,
-        isHost: true,
-        score: 0,
-        ready: true
-    }];
+    // Mostrar loading
+    const button = document.getElementById('create-confirm-btn');
+    const originalText = button.textContent;
+    button.textContent = 'Creando...';
+    button.disabled = true;
 
-    // Actualizar UI del lobby
-    updateHostLobby();
-    showScreen('hostLobby');
+    try {
+        // Configurar estado del juego
+        gameState.isHost = true;
+        gameState.gameCode = generateGameCode();
+        gameState.gameName = gameName;
+        gameState.username = username;
+        gameState.maxPlayers = maxPlayers;
+        gameState.players = [{
+            id: 'host',
+            name: username,
+            isHost: true,
+            score: 0,
+            ready: true
+        }];
 
-    // Simular almacenamiento local para demo
-    localStorage.setItem('gameSession', JSON.stringify({
-        code: gameState.gameCode,
-        name: gameState.gameName,
-        host: username,
-        players: gameState.players
-    }));
+        // Crear partida en Firebase
+        const gameData = {
+            code: gameState.gameCode,
+            name: gameState.gameName,
+            host: username,
+            players: gameState.players,
+            maxPlayers: maxPlayers,
+            status: 'waiting'
+        };
+
+        const success = await window.firebaseManager.createGame(gameData);
+        
+        if (success) {
+            // Configurar listener para cambios en la partida
+            setupGameListener();
+            
+            // Actualizar UI del lobby
+            updateHostLobby();
+            showScreen('hostLobby');
+        } else {
+            throw new Error('No se pudo crear la partida');
+        }
+    } catch (error) {
+        console.error('Error al crear partida:', error);
+        alert('Error al crear la partida. Inténtalo de nuevo.');
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
 }
 
 // Unirse a partida existente
-function joinGame() {
+async function joinGame() {
     const username = document.getElementById('player-username').value.trim();
     const gameCode = document.getElementById('game-code').value.trim();
 
@@ -171,49 +269,91 @@ function joinGame() {
         return;
     }
 
-    // Simular busqueda de partida
-    const savedGame = localStorage.getItem('gameSession');
-    if (!savedGame) {
-        alert('No se encontro una partida con ese codigo.');
-        return;
+    // Mostrar loading
+    const button = document.getElementById('join-confirm-btn');
+    const originalText = button.textContent;
+    button.textContent = 'Conectando...';
+    button.disabled = true;
+
+    try {
+        // Verificar si la partida existe
+        const gameExists = await window.firebaseManager.joinGame(gameCode);
+        
+        if (!gameExists) {
+            alert('No se encontró una partida con ese código.');
+            return;
+        }
+
+        // Configurar estado del jugador
+        gameState.isHost = false;
+        gameState.gameCode = gameCode;
+        gameState.username = username;
+
+        // Crear datos del nuevo jugador
+        const newPlayer = {
+            id: 'player_' + Date.now(),
+            name: username,
+            isHost: false,
+            score: 0,
+            ready: true
+        };
+
+        // Intentar agregar jugador a la partida
+        const success = await window.firebaseManager.addPlayer(gameCode, newPlayer);
+        
+        if (success) {
+            // Configurar listener para cambios en la partida
+            setupGameListener();
+            showScreen('playerLobby');
+        } else {
+            alert('Ya hay un jugador con ese nombre en la partida o la partida está llena.');
+        }
+    } catch (error) {
+        console.error('Error al unirse a partida:', error);
+        alert('Error al conectarse a la partida. Verifica el código e inténtalo de nuevo.');
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+// Configurar listener de Firebase para cambios en tiempo real
+function setupGameListener() {
+    // Remover listener anterior si existe
+    if (gameState.gameListener) {
+        window.firebaseManager.removeListener(gameState.gameCode);
     }
 
-    const gameData = JSON.parse(savedGame);
-    if (gameData.code !== gameCode) {
-        alert('Codigo de partida incorrecto.');
-        return;
-    }
+    // Configurar nuevo listener
+    gameState.gameListener = window.firebaseManager.listenToGame(gameState.gameCode, (gameData) => {
+        if (!gameData) {
+            // La partida fue eliminada
+            alert('La partida ha sido cancelada por el host.');
+            resetGameState();
+            showScreen('home');
+            return;
+        }
 
-    // Verificar si el nombre ya esta en uso
-    if (gameData.players.some(player => player.name === username)) {
-        alert('Ya hay un jugador con ese nombre en la partida.');
-        return;
-    }
+        // Actualizar estado local
+        gameState.gameName = gameData.name;
+        gameState.players = gameData.players || [];
 
-    // Configurar estado del juego
-    gameState.isHost = false;
-    gameState.gameCode = gameCode;
-    gameState.gameName = gameData.name;
-    gameState.username = username;
-    gameState.players = gameData.players;
+        // Actualizar UI según el estado actual
+        if (screens.hostLobby.classList.contains('active')) {
+            updateHostLobby();
+        } else if (screens.playerLobby.classList.contains('active')) {
+            updatePlayerLobby();
+        }
 
-    // Agregar jugador a la lista
-    const newPlayer = {
-        id: 'player_' + Date.now(),
-        name: username,
-        isHost: false,
-        score: 0,
-        ready: true
-    };
-    gameState.players.push(newPlayer);
-
-    // Actualizar almacenamiento
-    gameData.players = gameState.players;
-    localStorage.setItem('gameSession', JSON.stringify(gameData));
-
-    // Actualizar UI del lobby
-    updatePlayerLobby();
-    showScreen('playerLobby');
+        // Verificar si el juego ha comenzado
+        if (gameData.status === 'playing' && !gameState.gameInProgress) {
+            gameState.currentQuestions = gameData.questions;
+            gameState.gameInProgress = true;
+            showScreen('game');
+            displayQuestion();
+            startTimer();
+        }
+    });
 }
 
 // Actualizar lobby del host
@@ -266,22 +406,44 @@ function updatePlayerLobby() {
 }
 
 // Iniciar partida
-function startGame() {
+async function startGame() {
     if (gameState.players.length < 2) {
         alert('Se necesitan al menos 2 jugadores para iniciar.');
         return;
     }
 
-    // Obtener preguntas aleatorias
-    gameState.currentQuestions = getRandomQuestions(20);
-    gameState.currentQuestionIndex = 0;
-    gameState.score = 0;
-    gameState.gameInProgress = true;
+    // Mostrar loading
+    const button = document.getElementById('start-game-btn');
+    const originalText = button.textContent;
+    button.textContent = 'Iniciando...';
+    button.disabled = true;
 
-    // Mostrar primera pregunta
-    showScreen('game');
-    displayQuestion();
-    startTimer();
+    try {
+        // Obtener preguntas aleatorias
+        const questions = getRandomQuestions(20);
+        
+        // Iniciar partida en Firebase
+        const success = await window.firebaseManager.startGame(gameState.gameCode, questions);
+        
+        if (success) {
+            gameState.currentQuestions = questions;
+            gameState.currentQuestionIndex = 0;
+            gameState.score = 0;
+            gameState.gameInProgress = true;
+
+            // Mostrar primera pregunta
+            showScreen('game');
+            displayQuestion();
+            startTimer();
+        } else {
+            throw new Error('No se pudo iniciar la partida');
+        }
+    } catch (error) {
+        console.error('Error al iniciar partida:', error);
+        alert('Error al iniciar la partida. Inténtalo de nuevo.');
+        button.textContent = originalText;
+        button.disabled = false;
+    }
 }
 
 // Mostrar pregunta actual
@@ -495,25 +657,63 @@ function displayResults() {
 }
 
 // Cancelar partida
-function cancelGame() {
+async function cancelGame() {
     if (confirm('¿Estas seguro de que quieres cancelar la partida?')) {
-        localStorage.removeItem('gameSession');
-        resetGameState();
-        showScreen('home');
+        try {
+            // Eliminar partida de Firebase
+            await window.firebaseManager.deleteGame(gameState.gameCode);
+            resetGameState();
+            showScreen('home');
+        } catch (error) {
+            console.error('Error al cancelar partida:', error);
+            // Aunque haya error, resetear el estado local
+            resetGameState();
+            showScreen('home');
+        }
     }
 }
 
 // Salir de partida
-function leaveGame() {
+async function leaveGame() {
     if (confirm('¿Estas seguro de que quieres salir de la partida?')) {
-        resetGameState();
-        showScreen('home');
+        try {
+            // Remover jugador de Firebase
+            await window.firebaseManager.removePlayer(gameState.gameCode, gameState.username);
+            resetGameState();
+            showScreen('home');
+        } catch (error) {
+            console.error('Error al salir de partida:', error);
+            // Aunque haya error, resetear el estado local
+            resetGameState();
+            showScreen('home');
+        }
     }
+}
+
+// Actualizar localStorage y notificar cambios
+function updateGameSession() {
+    const gameData = {
+        code: gameState.gameCode,
+        name: gameState.gameName,
+        host: gameState.players.find(p => p.isHost)?.name || '',
+        players: gameState.players,
+        timestamp: Date.now()
+    };
+    
+    localStorage.setItem('gameSession', JSON.stringify(gameData));
+    
+    // Disparar evento personalizado para sincronizacion inmediata
+    window.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameData }));
 }
 
 // Reiniciar estado del juego
 function resetGameState() {
     stopTimer();
+    
+    // Limpiar listener de Firebase
+    if (gameState.gameListener && gameState.gameCode) {
+        window.firebaseManager.removeListener(gameState.gameCode);
+    }
     
     gameState = {
         isHost: false,
@@ -528,7 +728,8 @@ function resetGameState() {
         timeRemaining: 30,
         gameInProgress: false,
         selectedAnswer: null,
-        results: []
+        results: [],
+        gameListener: null
     };
 }
 
@@ -536,20 +737,17 @@ function resetGameState() {
 window.gameState = gameState;
 window.debugFunctions = {
     showScreen,
-    createDemoGame: () => {
-        gameState.isHost = true;
-        gameState.gameCode = 'DEMO01';
-        gameState.gameName = 'Partida de Prueba';
-        gameState.username = 'Jugador1';
-        gameState.players = [
-            { id: 'host', name: 'Jugador1', isHost: true, score: 0 },
-            { id: 'p2', name: 'Jugador2', isHost: false, score: 0 },
-            { id: 'p3', name: 'Jugador3', isHost: false, score: 0 }
-        ];
-        updateHostLobby();
-        showScreen('hostLobby');
+    createDemoGame: async () => {
+        // Simular creacion de partida demo
+        document.getElementById('host-username').value = 'Jugador1';
+        document.getElementById('game-name').value = 'Partida Demo';
+        await createGame();
     },
-    startDemoGame: () => {
-        startGame();
-    }
+    joinDemoGame: async (gameCode) => {
+        // Simular union a partida demo
+        document.getElementById('player-username').value = 'Jugador2';
+        document.getElementById('game-code').value = gameCode || 'DEMO01';
+        await joinGame();
+    },
+    getFirebaseManager: () => window.firebaseManager
 };
