@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quien Quiere Ser Millonario - Videojuegos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Pantalla principal -->
+    <div id="home-screen" class="screen active">
+        <div class="container">
+            <h1 class="game-title">Quien Quiere Ser Millonario</h1>
+            <h2 class="game-subtitle">Edicion Videojuegos</h2>
+            
+            <div class="menu-options">
+                <button id="create-game-btn" class="menu-btn primary">Crear Partida</button>
+                <button id="join-game-btn" class="menu-btn secondary">Unirse a Partida</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla crear partida -->
+    <div id="create-game-screen" class="screen">
+        <div class="container">
+            <h2>Crear Nueva Partida</h2>
+            
+            <div class="form-group">
+                <label for="host-username">Tu nombre:</label>
+                <input type="text" id="host-username" maxlength="20" placeholder="Ingresa tu nombre">
+            </div>
+            
+            <div class="form-group">
+                <label for="game-name">Nombre de la partida:</label>
+                <input type="text" id="game-name" maxlength="30" placeholder="Nombre de tu partida">
+            </div>
+            
+            <div class="form-group">
+                <label for="max-players">Maximo de jugadores:</label>
+                <select id="max-players">
+                    <option value="2">2 jugadores</option>
+                    <option value="4" selected>4 jugadores</option>
+                    <option value="6">6 jugadores</option>
+                    <option value="8">8 jugadores</option>
+                </select>
+            </div>
+            
+            <div class="button-group">
+                <button id="create-confirm-btn" class="menu-btn primary">Crear Partida</button>
+                <button id="back-from-create-btn" class="menu-btn secondary">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla unirse a partida -->
+    <div id="join-game-screen" class="screen">
+        <div class="container">
+            <h2>Unirse a Partida</h2>
+            
+            <div class="form-group">
+                <label for="player-username">Tu nombre:</label>
+                <input type="text" id="player-username" maxlength="20" placeholder="Ingresa tu nombre">
+            </div>
+            
+            <div class="form-group">
+                <label for="game-code">Codigo de partida:</label>
+                <input type="text" id="game-code" maxlength="6" placeholder="Ingresa el codigo">
+            </div>
+            
+            <div class="button-group">
+                <button id="join-confirm-btn" class="menu-btn primary">Unirse</button>
+                <button id="back-from-join-btn" class="menu-btn secondary">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla lobby del host -->
+    <div id="host-lobby-screen" class="screen">
+        <div class="container">
+            <h2>Lobby de la Partida</h2>
+            
+            <div class="game-info">
+                <div class="info-item">
+                    <span class="label">Codigo de partida:</span>
+                    <span id="display-game-code" class="game-code">------</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Partida:</span>
+                    <span id="display-game-name">Mi Partida</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Jugadores:</span>
+                    <span id="player-count">1/4</span>
+                </div>
+            </div>
+            
+            <div class="players-section">
+                <h3>Jugadores conectados:</h3>
+                <div id="players-list" class="players-list">
+                    <!-- Los jugadores se agregaran dinamicamente -->
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="start-game-btn" class="menu-btn primary" disabled>Iniciar Partida</button>
+                <button id="cancel-game-btn" class="menu-btn secondary">Cancelar Partida</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla lobby del jugador -->
+    <div id="player-lobby-screen" class="screen">
+        <div class="container">
+            <h2>Esperando en el Lobby</h2>
+            
+            <div class="game-info">
+                <div class="info-item">
+                    <span class="label">Partida:</span>
+                    <span id="joined-game-name">Partida de Videojuegos</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Jugadores:</span>
+                    <span id="joined-player-count">2/4</span>
+                </div>
+            </div>
+            
+            <div class="players-section">
+                <h3>Jugadores conectados:</h3>
+                <div id="joined-players-list" class="players-list">
+                    <!-- Los jugadores se agregaran dinamicamente -->
+                </div>
+            </div>
+            
+            <div class="waiting-message">
+                <p>Esperando a que el host inicie la partida...</p>
+            </div>
+            
+            <button id="leave-game-btn" class="menu-btn secondary">Salir de la Partida</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de juego -->
+    <div id="game-screen" class="screen">
+        <div class="game-container">
+            <div class="game-header">
+                <div class="question-counter">
+                    <span>Pregunta <span id="current-question">1</span> de 20</span>
+                </div>
+                <div class="timer-container">
+                    <div class="timer" id="timer">30</div>
+                </div>
+                <div class="score-container">
+                    <span>Puntuacion: <span id="current-score">0</span></span>
+                </div>
+            </div>
+            
+            <div class="question-section">
+                <div class="question-text" id="question-text">
+                    Esta es una pregunta de ejemplo sobre videojuegos
+                </div>
+            </div>
+            
+            <div class="answers-section">
+                <div class="answers-grid">
+                    <button class="answer-btn" id="answer-a" data-answer="a">
+                        <span class="answer-letter">A:</span>
+                        <span class="answer-text">Respuesta A</span>
+                    </button>
+                    <button class="answer-btn" id="answer-b" data-answer="b">
+                        <span class="answer-letter">B:</span>
+                        <span class="answer-text">Respuesta B</span>
+                    </button>
+                    <button class="answer-btn" id="answer-c" data-answer="c">
+                        <span class="answer-letter">C:</span>
+                        <span class="answer-text">Respuesta C</span>
+                    </button>
+                    <button class="answer-btn" id="answer-d" data-answer="d">
+                        <span class="answer-letter">D:</span>
+                        <span class="answer-text">Respuesta D</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de resultados -->
+    <div id="results-screen" class="screen">
+        <div class="container">
+            <h2>Resultados Finales</h2>
+            
+            <div class="podium">
+                <div class="podium-place second" id="second-place">
+                    <div class="place-number">2</div>
+                    <div class="player-name">Jugador 2</div>
+                    <div class="player-score">850 puntos</div>
+                </div>
+                
+                <div class="podium-place first" id="first-place">
+                    <div class="place-number">1</div>
+                    <div class="player-name">Jugador 1</div>
+                    <div class="player-score">1000 puntos</div>
+                </div>
+                
+                <div class="podium-place third" id="third-place">
+                    <div class="place-number">3</div>
+                    <div class="player-name">Jugador 3</div>
+                    <div class="player-score">720 puntos</div>
+                </div>
+            </div>
+            
+            <div class="all-results">
+                <h3>Todos los resultados:</h3>
+                <div id="final-results-list" class="results-list">
+                    <!-- Se llenara dinamicamente -->
+                </div>
+            </div>
+            
+            <button id="new-game-btn" class="menu-btn primary">Nueva Partida</button>
+        </div>
+    </div>
+
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
