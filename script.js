@@ -279,11 +279,22 @@ async function joinGame() {
     button.disabled = true;
 
     try {
+        console.log(`🔍 Intentando unirse a partida: ${gameCode}`);
+        console.log(`👤 Usuario: ${username}`);
+        console.log(`🔥 Firebase Manager disponible:`, !!window.firebaseManager);
+
+        // Verificar si Firebase está cargado
+        if (!window.firebaseManager) {
+            throw new Error('Firebase no está cargado. Recarga la página.');
+        }
+
         // Verificar si la partida existe
+        console.log(`📡 Verificando existencia de partida...`);
         const gameExists = await window.firebaseManager.joinGame(gameCode);
+        console.log(`🎮 Partida existe:`, gameExists);
         
         if (!gameExists) {
-            alert('No se encontró una partida con ese código.');
+            alert(`No se encontró una partida con el código: ${gameCode}\n\nVerifica:\n- Que el código sea correcto\n- Que la partida esté activa\n- Tu conexión a internet`);
             return;
         }
 
@@ -301,8 +312,11 @@ async function joinGame() {
             ready: true
         };
 
+        console.log(`➕ Agregando jugador:`, newPlayer);
+
         // Intentar agregar jugador a la partida
         const success = await window.firebaseManager.addPlayer(gameCode, newPlayer);
+        console.log(`✅ Jugador agregado:`, success);
         
         if (success) {
             // Configurar listener para cambios en la partida
@@ -312,8 +326,9 @@ async function joinGame() {
             alert('Ya hay un jugador con ese nombre en la partida o la partida está llena.');
         }
     } catch (error) {
-        console.error('Error al unirse a partida:', error);
-        alert('Error al conectarse a la partida. Verifica el código e inténtalo de nuevo.');
+        console.error('❌ Error completo al unirse a partida:', error);
+        console.error('❌ Stack trace:', error.stack);
+        alert(`Error al conectarse a la partida:\n${error.message}\n\nRevisa la consola para más detalles.`);
     } finally {
         button.textContent = originalText;
         button.disabled = false;
@@ -752,5 +767,108 @@ window.debugFunctions = {
         document.getElementById('game-code').value = gameCode || 'DEMO01';
         await joinGame();
     },
-    getFirebaseManager: () => window.firebaseManager
+    getFirebaseManager: () => window.firebaseManager,
+    
+    // Nueva función de diagnóstico completo
+    diagnosticTest: async () => {
+        console.log('🔧 DIAGNÓSTICO COMPLETO DEL SISTEMA');
+        console.log('=====================================');
+        
+        // 1. Verificar carga de Firebase
+        console.log('1. 🔥 Firebase Manager:', !!window.firebaseManager);
+        
+        if (!window.firebaseManager) {
+            console.error('❌ Firebase Manager no está cargado');
+            return;
+        }
+        
+        // 2. Test de conectividad
+        console.log('2. 📡 Testeando conectividad...');
+        try {
+            const testCode = 'TEST' + Math.random().toString(36).substr(2, 2).toUpperCase();
+            const testData = {
+                code: testCode,
+                name: 'Test Connection',
+                host: 'TestUser',
+                players: [{ name: 'TestUser', id: 'test', isHost: true }],
+                maxPlayers: 2,
+                status: 'waiting'
+            };
+            
+            console.log(`📝 Creando partida de test: ${testCode}`);
+            const createResult = await window.firebaseManager.createGame(testData);
+            console.log(`✅ Creación exitosa:`, createResult);
+            
+            if (createResult) {
+                console.log(`🔍 Buscando partida de test: ${testCode}`);
+                const findResult = await window.firebaseManager.joinGame(testCode);
+                console.log(`✅ Búsqueda exitosa:`, findResult);
+                
+                // Limpiar partida de test
+                await window.firebaseManager.deleteGame(testCode);
+                console.log(`🗑️ Partida de test eliminada`);
+                
+                if (findResult) {
+                    console.log('🎉 DIAGNÓSTICO: SISTEMA FUNCIONANDO CORRECTAMENTE');
+                } else {
+                    console.error('❌ DIAGNÓSTICO: ERROR EN BÚSQUEDA DE PARTIDAS');
+                }
+            } else {
+                console.error('❌ DIAGNÓSTICO: ERROR EN CREACIÓN DE PARTIDAS');
+            }
+            
+        } catch (error) {
+            console.error('❌ DIAGNÓSTICO: ERROR DE CONECTIVIDAD', error);
+        }
+        
+        console.log('=====================================');
+        console.log('🏁 Diagnóstico completado');
+    },
+    
+    // Función para listar todas las partidas activas
+    listAllGames: async () => {
+        console.log('📋 LISTADO DE PARTIDAS ACTIVAS');
+        console.log('==============================');
+        
+        // Esto requiere acceso directo a Firebase
+        try {
+            // Importar Firebase directamente para debug
+            const { ref, get } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+            const gamesRef = ref(window.firebaseManager.database, 'games');
+            const snapshot = await get(gamesRef);
+            
+            if (snapshot.exists()) {
+                const games = snapshot.val();
+                console.log('🎮 Partidas encontradas:', Object.keys(games).length);
+                
+                Object.entries(games).forEach(([code, data]) => {
+                    console.log(`📌 ${code}:`, {
+                        nombre: data.name,
+                        host: data.host,
+                        jugadores: data.players?.length || 0,
+                        estado: data.status,
+                        creada: new Date(data.createdAt).toLocaleString()
+                    });
+                });
+            } else {
+                console.log('📭 No hay partidas activas');
+            }
+        } catch (error) {
+            console.error('❌ Error al listar partidas:', error);
+        }
+        
+        console.log('==============================');
+    }
 };
+
+// Mensaje de ayuda en consola
+console.log(`
+🎮 FUNCIONES DE DEBUG DISPONIBLES:
+==================================
+debugFunctions.diagnosticTest()     - Diagnóstico completo del sistema
+debugFunctions.listAllGames()       - Listar todas las partidas activas
+debugFunctions.createDemoGame()     - Crear partida de prueba
+debugFunctions.joinDemoGame(code)   - Unirse a partida con código
+debugFunctions.getFirebaseManager() - Acceder al manager de Firebase
+gameState                          - Ver estado actual del juego
+`);
