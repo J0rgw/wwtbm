@@ -14,10 +14,10 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-console.log('🔥 Inicializando Firebase...');
+console.log('Inicializando Firebase...');
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-console.log('✅ Firebase inicializado correctamente');
+console.log('Firebase inicializado correctamente');
 
 // Clase para manejar Firebase
 class FirebaseGameManager {
@@ -30,18 +30,18 @@ class FirebaseGameManager {
     // Crear nueva partida
     async createGame(gameData) {
         try {
-            console.log(`🎮 Creando partida: ${gameData.code}`);
+            console.log(`Creando partida: ${gameData.code}`);
             const gameRef = ref(this.database, `games/${gameData.code}`);
             await set(gameRef, {
                 ...gameData,
                 createdAt: Date.now(),
                 status: 'waiting'
             });
-            console.log(`✅ Partida creada exitosamente: ${gameData.code}`);
+            console.log(`Partida creada exitosamente: ${gameData.code}`);
             this.currentGameRef = gameRef;
             return true;
         } catch (error) {
-            console.error('❌ Error al crear partida:', error);
+            console.error('Error al crear partida:', error);
             return false;
         }
     }
@@ -49,7 +49,7 @@ class FirebaseGameManager {
     // Verificar si la partida existe
     async joinGame(gameCode) {
         try {
-            console.log(`🔍 Buscando partida: ${gameCode}`);
+            console.log(`Buscando partida: ${gameCode}`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             this.currentGameRef = gameRef;
             
@@ -57,15 +57,15 @@ class FirebaseGameManager {
             return new Promise((resolve, reject) => {
                 onValue(gameRef, (snapshot) => {
                     const gameData = snapshot.val();
-                    console.log(`📊 Datos de partida encontrados:`, gameData);
+                    console.log(`Datos de partida encontrados:`, gameData);
                     resolve(gameData !== null);
                 }, { onlyOnce: true }, (error) => {
-                    console.error('❌ Error al buscar partida:', error);
+                    console.error('Error al buscar partida:', error);
                     reject(error);
                 });
             });
         } catch (error) {
-            console.error('❌ Error en joinGame:', error);
+            console.error('Error en joinGame:', error);
             return false;
         }
     }
