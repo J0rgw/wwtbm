@@ -107,6 +107,9 @@ function updateGameSession() {
     // Disparar evento personalizado para sincronizacion inmediata
     window.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameData }));
 }
+
+// Inicializar event listeners
+function initializeEventListeners() {
     // Pantalla principal
     document.getElementById('create-game-btn').addEventListener('click', () => showScreen('createGame'));
     document.getElementById('join-game-btn').addEventListener('click', () => showScreen('joinGame'));
