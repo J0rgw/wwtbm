@@ -6,7 +6,7 @@ import { getDatabase, ref, set, onValue, push, remove, off } from 'https://www.g
 const firebaseConfig = {
     apiKey: "AIzaSyDRqhoejBBl1tdinweT56GP2Y3bc67uq2Q",
     authDomain: "wwtbm-f8f64.firebaseapp.com",
-    databaseURL: "https://console.firebase.google.com/u/0/project/wwtbm-f8f64/database/wwtbm-f8f64-default-rtdb/data/~2F?hl=es-419", // Esta URL la obtienes al crear Realtime Database
+    databaseURL: "https://wwtbm-f8f64-default-rtdb.europe-west1.firebasedatabase.app/", // URL actualizada para Europa
     projectId: "wwtbm-f8f64",
     storageBucket: "wwtbm-f8f64.firebasestorage.app",
     messagingSenderId: "217823605706",
@@ -14,8 +14,10 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
+console.log('🔥 Inicializando Firebase...');
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+console.log('✅ Firebase inicializado correctamente');
 
 // Clase para manejar Firebase
 class FirebaseGameManager {
@@ -28,35 +30,42 @@ class FirebaseGameManager {
     // Crear nueva partida
     async createGame(gameData) {
         try {
+            console.log(`🎮 Creando partida: ${gameData.code}`);
             const gameRef = ref(this.database, `games/${gameData.code}`);
             await set(gameRef, {
                 ...gameData,
                 createdAt: Date.now(),
                 status: 'waiting'
             });
+            console.log(`✅ Partida creada exitosamente: ${gameData.code}`);
             this.currentGameRef = gameRef;
             return true;
         } catch (error) {
-            console.error('Error al crear partida:', error);
+            console.error('❌ Error al crear partida:', error);
             return false;
         }
     }
 
-    // Unirse a partida existente
+    // Verificar si la partida existe
     async joinGame(gameCode) {
         try {
+            console.log(`🔍 Buscando partida: ${gameCode}`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             this.currentGameRef = gameRef;
             
             // Verificar si la partida existe
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 onValue(gameRef, (snapshot) => {
                     const gameData = snapshot.val();
+                    console.log(`📊 Datos de partida encontrados:`, gameData);
                     resolve(gameData !== null);
-                }, { onlyOnce: true });
+                }, { onlyOnce: true }, (error) => {
+                    console.error('❌ Error al buscar partida:', error);
+                    reject(error);
+                });
             });
         } catch (error) {
-            console.error('Error al unirse a partida:', error);
+            console.error('❌ Error en joinGame:', error);
             return false;
         }
     }
