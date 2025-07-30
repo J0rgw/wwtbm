@@ -730,6 +730,7 @@ async function cancelGameFromMonitoring() {
 // ==================== FUNCIONES DE JUEGO PARA JUGADORES ====================
 
 // Mostrar pregunta actual
+// Mostrar pregunta actual
 function displayQuestion() {
     // Verificar que tengamos preguntas y una pregunta válida
     if (!gameState.currentQuestions || 
@@ -740,6 +741,7 @@ function displayQuestion() {
     }
 
     const question = gameState.currentQuestions[gameState.currentQuestionIndex];
+    const questionNumber = gameState.currentQuestionIndex + 1;
     
     // Verificar que la pregunta tenga la estructura correcta
     if (!question.question || !question.answers) {
@@ -747,9 +749,27 @@ function displayQuestion() {
         return;
     }
     
-    document.getElementById('current-question').textContent = gameState.currentQuestionIndex + 1;
+    document.getElementById('current-question').textContent = questionNumber;
     document.getElementById('question-text').textContent = question.question;
     document.getElementById('current-score').textContent = gameState.score;
+
+    // Actualizar indicador de dificultad
+    const difficultyIndicator = document.getElementById('difficulty-indicator');
+    if (difficultyIndicator) {
+        let difficulty = 'Fácil';
+        let difficultyClass = 'easy';
+        
+        if (questionNumber > 8 && questionNumber <= 14) {
+            difficulty = 'Media';
+            difficultyClass = 'medium';
+        } else if (questionNumber > 14) {
+            difficulty = 'Difícil';
+            difficultyClass = 'hard';
+        }
+        
+        difficultyIndicator.textContent = difficulty;
+        difficultyIndicator.className = `difficulty-indicator ${difficultyClass}`;
+    }
 
     // Actualizar respuestas
     const answerButtons = document.querySelectorAll('.answer-btn');
