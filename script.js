@@ -16,13 +16,13 @@ let gameState = {
     gameListener: null
 };
 
+// Estado del monitoreo del host
 let hostMonitoringState = {
     gameStartTime: null,
     currentQuestionStartTime: null,
     gameEvents: [],
     updateInterval: null
 };
-
 
 // Referencias a elementos del DOM
 const screens = {
@@ -34,14 +34,14 @@ const screens = {
     game: document.getElementById('game-screen'),
     waiting: document.getElementById('waiting-screen'),
     results: document.getElementById('results-screen'),
-    hostMonitoring: document.getElementById('host-monitoring-screen') // Nueva pantalla
+    hostMonitoring: document.getElementById('host-monitoring-screen')
 };
 
 // Inicializar la aplicacion
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     showScreen('home');
-
+    
     // Verificar si Firebase está disponible
     if (typeof window.firebaseManager === 'undefined') {
         console.error('Firebase no está cargado correctamente');
@@ -87,14 +87,14 @@ function setupInputValidation() {
     const usernameInputs = ['host-username', 'player-username'];
     usernameInputs.forEach(inputId => {
         const input = document.getElementById(inputId);
-        input.addEventListener('input', function () {
+        input.addEventListener('input', function() {
             this.value = this.value.replace(/[^a-zA-Z0-9_-]/g, '');
         });
     });
 
     // Validar codigo de partida
     const gameCodeInput = document.getElementById('game-code');
-    gameCodeInput.addEventListener('input', function () {
+    gameCodeInput.addEventListener('input', function() {
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     });
 
@@ -110,7 +110,7 @@ function validateCreateForm() {
     const username = document.getElementById('host-username').value.trim();
     const gameName = document.getElementById('game-name').value.trim();
     const button = document.getElementById('create-confirm-btn');
-
+    
     button.disabled = username.length < 2 || gameName.length < 3;
 }
 
@@ -119,7 +119,7 @@ function validateJoinForm() {
     const username = document.getElementById('player-username').value.trim();
     const gameCode = document.getElementById('game-code').value.trim();
     const button = document.getElementById('join-confirm-btn');
-
+    
     button.disabled = username.length < 2 || gameCode.length !== 6;
 }
 
@@ -182,11 +182,11 @@ async function createGame() {
         };
 
         const success = await window.firebaseManager.createGame(gameData);
-
+        
         if (success) {
             // Configurar listener para cambios en la partida
             setupGameListener();
-
+            
             // Actualizar UI del lobby
             updateHostLobby();
             showScreen('hostLobby');
@@ -220,8 +220,6 @@ async function joinGame() {
 
     try {
         console.log(`Intentando unirse a partida: ${gameCode}`);
-        console.log(`Usuario: ${username}`);
-        console.log(`Firebase Manager disponible:`, !!window.firebaseManager);
 
         // Verificar si Firebase está cargado
         if (!window.firebaseManager) {
@@ -229,12 +227,10 @@ async function joinGame() {
         }
 
         // Verificar si la partida existe
-        console.log(`Verificando existencia de partida...`);
         const gameExists = await window.firebaseManager.joinGame(gameCode);
-        console.log(`Partida existe:`, gameExists);
-
+        
         if (!gameExists) {
-            alert(`No se encontró una partida con el código: ${gameCode}\n\nVerifica:\n- Que el código sea correcto\n- Que la partida esté activa\n- Tu conexión a internet`);
+            alert(`No se encontró una partida con el código: ${gameCode}`);
             return;
         }
 
@@ -252,12 +248,9 @@ async function joinGame() {
             ready: true
         };
 
-        console.log(`Agregando jugador:`, newPlayer);
-
         // Intentar agregar jugador a la partida
         const success = await window.firebaseManager.addPlayer(gameCode, newPlayer);
-        console.log(`Jugador agregado:`, success);
-
+        
         if (success) {
             // Configurar listener para cambios en la partida
             setupGameListener();
@@ -266,9 +259,8 @@ async function joinGame() {
             alert('Ya hay un jugador con ese nombre en la partida o la partida está llena.');
         }
     } catch (error) {
-        console.error('Error completo al unirse a partida:', error);
-        console.error('Stack trace:', error.stack);
-        alert(`Error al conectarse a la partida:\n${error.message}\n\nRevisa la consola para más detalles.`);
+        console.error('Error al unirse a partida:', error);
+        alert(`Error al conectarse a la partida: ${error.message}`);
     } finally {
         button.textContent = originalText;
         button.disabled = false;
@@ -296,11 +288,11 @@ function setupGameListener() {
             return;
         }
 
-        // Detectar cambios en los jugadores para logging
+        // Detectar cambios en los jugadores para logging (solo para host)
         if (gameState.isHost && gameState.players) {
             const oldPlayers = gameState.players.filter(p => !p.isHost);
             const newPlayers = (gameData.players || []).filter(p => !p.isHost);
-
+            
             // Detectar jugadores que terminaron
             newPlayers.forEach(newPlayer => {
                 const oldPlayer = oldPlayers.find(p => p.name === newPlayer.name);
@@ -308,7 +300,7 @@ function setupGameListener() {
                     addGameEvent('success', `${newPlayer.name} terminó la partida con ${newPlayer.score || 0} puntos`);
                 }
             });
-
+            
             // Detectar nuevos jugadores
             newPlayers.forEach(newPlayer => {
                 const existed = oldPlayers.find(p => p.name === newPlayer.name);
@@ -316,7 +308,7 @@ function setupGameListener() {
                     addGameEvent('info', `${newPlayer.name} se unió a la partida`);
                 }
             });
-
+            
             // Detectar jugadores que se fueron
             oldPlayers.forEach(oldPlayer => {
                 const stillExists = newPlayers.find(p => p.name === oldPlayer.name);
@@ -356,15 +348,14 @@ function setupGameListener() {
                 stopTimer();
                 gameState.gameInProgress = false;
             }
-
+            
             gameState.results = gameData.finalResults || [];
-            console.log('Juego terminado, mostrando resultados:', gameState.results);
             displayResults();
             showScreen('results');
             return;
         }
 
-        // Actualizar pantalla de espera si está activa (solo si el juego no ha terminado)
+        // Actualizar pantalla de espera si está activa
         if (screens.waiting.classList.contains('active') && gameData.status !== 'finished') {
             updateWaitingScreen(gameData);
         }
@@ -420,7 +411,7 @@ function updatePlayerLobby() {
     });
 }
 
-// Iniciar partida
+// Iniciar partida (NUEVA FUNCIÓN - Reemplaza startGame)
 async function startGameAsHost() {
     if (gameState.players.length < 2) {
         alert('Se necesitan al menos 2 jugadores para iniciar.');
@@ -436,10 +427,10 @@ async function startGameAsHost() {
     try {
         // Obtener preguntas aleatorias
         const questions = getRandomQuestions(20);
-
+        
         // Iniciar partida en Firebase
         const success = await window.firebaseManager.startGame(gameState.gameCode, questions);
-
+        
         if (success) {
             gameState.currentQuestions = questions;
             gameState.currentQuestionIndex = 0;
@@ -450,7 +441,7 @@ async function startGameAsHost() {
                 hostMonitoringState.gameStartTime = Date.now();
                 addGameEvent('success', 'Partida iniciada por el host');
                 addGameEvent('info', `${gameState.players.length - 1} jugadores comenzaron la partida`);
-
+                
                 // Inicializar monitoreo
                 initializeHostMonitoring();
                 showScreen('hostMonitoring');
@@ -472,10 +463,276 @@ async function startGameAsHost() {
     }
 }
 
+// ==================== FUNCIONES DE MONITOREO DEL HOST ====================
+
+// Inicializar la pantalla de monitoreo del host
+function initializeHostMonitoring() {
+    // Actualizar información básica
+    document.getElementById('monitoring-game-code').textContent = gameState.gameCode;
+    document.getElementById('monitoring-game-name').textContent = gameState.gameName;
+    document.getElementById('monitoring-game-status').textContent = 'En progreso';
+    
+    // Configurar event listeners para controles del host
+    document.getElementById('force-finish-game-btn').addEventListener('click', forceFinishGame);
+    document.getElementById('cancel-monitoring-btn').addEventListener('click', cancelGameFromMonitoring);
+    
+    // Limpiar log de eventos
+    const logContainer = document.getElementById('game-events-log');
+    logContainer.innerHTML = '';
+    
+    // Mostrar eventos iniciales
+    hostMonitoringState.gameEvents.forEach(event => {
+        addLogEntry(event);
+    });
+}
+
+// Actualizar la pantalla de monitoreo
+function updateHostMonitoring() {
+    if (!screens.hostMonitoring || !screens.hostMonitoring.classList.contains('active')) {
+        return;
+    }
+
+    // Actualizar pregunta actual
+    updateCurrentQuestionDisplay();
+    
+    // Actualizar estado de jugadores
+    updatePlayersMonitoring();
+    
+    // Actualizar estadísticas
+    updateGameStatistics();
+    
+    // Actualizar tiempo transcurrido
+    updateElapsedTime();
+}
+
+// Actualizar la visualización de la pregunta actual
+function updateCurrentQuestionDisplay() {
+    if (!gameState.currentQuestions || gameState.currentQuestionIndex >= gameState.currentQuestions.length) {
+        document.getElementById('monitoring-question-text').textContent = 'Partida finalizada';
+        document.getElementById('monitoring-current-question').textContent = '20';
+        return;
+    }
+
+    const currentQuestion = gameState.currentQuestions[gameState.currentQuestionIndex];
+    
+    document.getElementById('monitoring-current-question').textContent = gameState.currentQuestionIndex + 1;
+    document.getElementById('monitoring-question-text').textContent = currentQuestion.question;
+    
+    // Mostrar respuestas con indicador de correcta
+    const answersContainer = document.getElementById('monitoring-question-answers');
+    answersContainer.innerHTML = '';
+    
+    ['a', 'b', 'c', 'd'].forEach(key => {
+        const answerDiv = document.createElement('div');
+        answerDiv.className = 'answer-preview';
+        if (key === currentQuestion.correct) {
+            answerDiv.classList.add('correct');
+        }
+        answerDiv.innerHTML = `<strong>${key.toUpperCase()}:</strong> ${currentQuestion.answers[key]}`;
+        answersContainer.appendChild(answerDiv);
+    });
+}
+
+// Actualizar el estado de los jugadores
+function updatePlayersMonitoring() {
+    const playersGrid = document.getElementById('monitoring-players-grid');
+    playersGrid.innerHTML = '';
+    
+    // Filtrar solo jugadores (no el host)
+    const players = gameState.players.filter(player => !player.isHost);
+    
+    players.forEach(player => {
+        const playerDiv = document.createElement('div');
+        playerDiv.className = 'player-monitoring-item';
+        
+        // Determinar estado del jugador
+        let playerStatus = 'Conectado';
+        let statusClass = 'playing';
+        
+        if (player.finished) {
+            playerStatus = 'Terminado';
+            statusClass = 'finished';
+        } else if (player.disconnected) {
+            playerStatus = 'Desconectado';
+            statusClass = 'disconnected';
+        }
+        
+        playerDiv.classList.add(statusClass);
+        
+        const progressText = player.finished 
+            ? '20/20 preguntas' 
+            : `${Math.min(gameState.currentQuestionIndex + 1, 20)}/20 preguntas`;
+        
+        playerDiv.innerHTML = `
+            <div class="player-info-monitoring">
+                <div class="player-name-monitoring">${player.name}</div>
+                <div class="player-status-monitoring">${playerStatus}</div>
+            </div>
+            <div class="player-stats-monitoring">
+                <div class="player-score-monitoring">${player.score || 0} pts</div>
+                <div class="player-progress-monitoring">${progressText}</div>
+            </div>
+        `;
+        
+        playersGrid.appendChild(playerDiv);
+    });
+}
+
+// Actualizar estadísticas del juego
+function updateGameStatistics() {
+    const players = gameState.players.filter(player => !player.isHost);
+    const activePlayers = players.filter(player => !player.finished && !player.disconnected);
+    const finishedPlayers = players.filter(player => player.finished);
+    
+    document.getElementById('active-players-count').textContent = activePlayers.length;
+    document.getElementById('finished-players-count').textContent = finishedPlayers.length;
+    
+    // Calcular puntuación promedio
+    const totalScore = players.reduce((sum, player) => sum + (player.score || 0), 0);
+    const averageScore = players.length > 0 ? Math.round(totalScore / players.length) : 0;
+    document.getElementById('average-score').textContent = averageScore;
+}
+
+// Actualizar tiempo transcurrido
+function updateElapsedTime() {
+    if (!hostMonitoringState.gameStartTime) return;
+    
+    const elapsed = Date.now() - hostMonitoringState.gameStartTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    
+    document.getElementById('game-elapsed-time').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Iniciar actualizaciones periódicas del monitoreo
+function startMonitoringUpdates() {
+    // Actualizar cada 2 segundos
+    hostMonitoringState.updateInterval = setInterval(updateHostMonitoring, 2000);
+}
+
+// Detener actualizaciones del monitoreo
+function stopMonitoringUpdates() {
+    if (hostMonitoringState.updateInterval) {
+        clearInterval(hostMonitoringState.updateInterval);
+        hostMonitoringState.updateInterval = null;
+    }
+}
+
+// Agregar evento al log
+function addGameEvent(type, message) {
+    const event = {
+        type: type, // 'info', 'success', 'warning', 'error'
+        message: message,
+        timestamp: Date.now()
+    };
+    
+    hostMonitoringState.gameEvents.push(event);
+    
+    // Mantener solo los últimos 50 eventos
+    if (hostMonitoringState.gameEvents.length > 50) {
+        hostMonitoringState.gameEvents.shift();
+    }
+    
+    // Si estamos en la pantalla de monitoreo, agregar al DOM
+    if (screens.hostMonitoring && screens.hostMonitoring.classList.contains('active')) {
+        addLogEntry(event);
+    }
+}
+
+// Agregar entrada al log visual
+function addLogEntry(event) {
+    const logContainer = document.getElementById('game-events-log');
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${event.type}`;
+    
+    const time = new Date(event.timestamp).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    
+    logEntry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-message">${event.message}</span>
+    `;
+    
+    logContainer.appendChild(logEntry);
+    
+    // Scroll automático al final
+    logContainer.scrollTop = logContainer.scrollHeight;
+    
+    // Mantener solo las últimas 20 entradas visibles
+    while (logContainer.children.length > 20) {
+        logContainer.removeChild(logContainer.firstChild);
+    }
+}
+
+// Forzar finalización de la partida (botón de emergencia)
+async function forceFinishGame() {
+    const confirmation = confirm(
+        '¿Estás seguro de que quieres terminar la partida forzosamente?\n\n' +
+        'Esto finalizará inmediatamente la partida para todos los jugadores.'
+    );
+    
+    if (!confirmation) return;
+    
+    try {
+        addGameEvent('warning', 'Host forzó la finalización de la partida');
+        
+        // Actualizar puntajes de todos los jugadores como terminados
+        const players = gameState.players.filter(player => !player.isHost);
+        
+        for (const player of players) {
+            if (!player.finished) {
+                await window.firebaseManager.updatePlayerScore(
+                    gameState.gameCode, 
+                    player.name, 
+                    player.score || 0
+                );
+            }
+        }
+        
+        // Finalizar partida
+        await window.firebaseManager.finishGame(gameState.gameCode);
+        addGameEvent('success', 'Partida finalizada forzosamente');
+        
+    } catch (error) {
+        console.error('Error al forzar finalización:', error);
+        addGameEvent('error', 'Error al forzar finalización de partida');
+        alert('Error al terminar la partida. Inténtalo de nuevo.');
+    }
+}
+
+// Cancelar partida desde monitoreo
+async function cancelGameFromMonitoring() {
+    const confirmation = confirm(
+        '¿Estás seguro de que quieres cancelar la partida?\n\n' +
+        'Esto eliminará completamente la partida y desconectará a todos los jugadores.'
+    );
+    
+    if (!confirmation) return;
+    
+    try {
+        addGameEvent('warning', 'Host canceló la partida');
+        await window.firebaseManager.deleteGame(gameState.gameCode);
+        
+        stopMonitoringUpdates();
+        resetGameState();
+        showScreen('home');
+    } catch (error) {
+        console.error('Error al cancelar partida:', error);
+        addGameEvent('error', 'Error al cancelar partida');
+        alert('Error al cancelar la partida.');
+    }
+}
+
+// ==================== FUNCIONES DE JUEGO PARA JUGADORES ====================
+
 // Mostrar pregunta actual
 function displayQuestion() {
     // Verificar que tengamos preguntas y una pregunta válida
-    if (!gameState.currentQuestions ||
+    if (!gameState.currentQuestions || 
         gameState.currentQuestionIndex >= gameState.currentQuestions.length ||
         !gameState.currentQuestions[gameState.currentQuestionIndex]) {
         console.error('Error: No hay pregunta válida para mostrar');
@@ -483,13 +740,13 @@ function displayQuestion() {
     }
 
     const question = gameState.currentQuestions[gameState.currentQuestionIndex];
-
+    
     // Verificar que la pregunta tenga la estructura correcta
     if (!question.question || !question.answers) {
         console.error('Error: Estructura de pregunta inválida', question);
         return;
     }
-
+    
     document.getElementById('current-question').textContent = gameState.currentQuestionIndex + 1;
     document.getElementById('question-text').textContent = question.question;
     document.getElementById('current-score').textContent = gameState.score;
@@ -499,7 +756,7 @@ function displayQuestion() {
     answerButtons.forEach((btn, index) => {
         const answerKey = ['a', 'b', 'c', 'd'][index];
         const answerText = question.answers[answerKey];
-
+        
         if (answerText) {
             btn.querySelector('.answer-text').textContent = answerText;
             btn.disabled = false;
@@ -529,7 +786,7 @@ function startTimer() {
 function updateTimer() {
     const timerElement = document.getElementById('timer');
     timerElement.textContent = gameState.timeRemaining;
-
+    
     if (gameState.timeRemaining <= 10) {
         timerElement.classList.add('warning');
     } else {
@@ -577,7 +834,7 @@ function showCorrectAnswer() {
 
     document.querySelectorAll('.answer-btn').forEach(btn => {
         const answerKey = btn.dataset.answer;
-
+        
         if (answerKey === correctAnswerKey) {
             btn.classList.add('correct');
         } else if (answerKey === gameState.selectedAnswer && answerKey !== correctAnswerKey) {
@@ -603,7 +860,7 @@ function timeUp() {
     if (gameState.selectedAnswer) return;
 
     stopTimer();
-
+    
     // Deshabilitar todos los botones
     document.querySelectorAll('.answer-btn').forEach(btn => {
         btn.disabled = true;
@@ -632,17 +889,17 @@ function nextQuestion() {
 // Finalizar juego
 async function endGame() {
     console.log('Finalizando juego para:', gameState.username);
-
+    
     // Detener timer y marcar como no en progreso
     stopTimer();
     gameState.gameInProgress = false;
-
+    
     try {
         // Guardar puntuación del jugador en Firebase
         console.log('Guardando puntuación:', gameState.score);
         await window.firebaseManager.updatePlayerScore(
-            gameState.gameCode,
-            gameState.username,
+            gameState.gameCode, 
+            gameState.username, 
             gameState.score
         );
 
@@ -652,12 +909,12 @@ async function endGame() {
         // Solo el host verifica si todos terminaron
         if (gameState.isHost) {
             console.log('Soy el host, verificando si todos terminaron...');
-
+            
             // Esperar un poco para asegurar que la actualización se propagó
             setTimeout(async () => {
                 const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameState.gameCode);
                 console.log('Todos los jugadores terminaron:', allFinished);
-
+                
                 if (allFinished) {
                     console.log('Finalizando partida como host...');
                     const finalResults = await window.firebaseManager.finishGame(gameState.gameCode);
@@ -683,21 +940,21 @@ function showWaitingScreen() {
 function updateWaitingScreen(gameData = null) {
     const statusContainer = document.getElementById('players-waiting-status');
     if (!statusContainer) return;
-
+    
     statusContainer.innerHTML = '';
 
     const players = gameData ? gameData.players : gameState.players;
-
+    
     if (!players || players.length === 0) return;
-
+    
     players.forEach(player => {
         const statusElement = document.createElement('div');
         statusElement.className = 'player-status-item';
-
+        
         const isFinished = player.finished === true;
         const statusClass = isFinished ? 'status-finished' : 'status-playing';
         const statusText = isFinished ? 'Terminado' : 'Jugando...';
-
+        
         statusElement.innerHTML = `
             <span class="player-status-name">${player.name}</span>
             <span class="${statusClass}">${statusText}</span>
@@ -740,13 +997,13 @@ function showLocalResults() {
 // Mostrar resultados finales
 function displayResults() {
     const results = gameState.results;
-
+    
     // Actualizar podio (top 3)
     const podiumPlaces = ['first-place', 'second-place', 'third-place'];
-
+    
     podiumPlaces.forEach((placeId, index) => {
         const placeElement = document.getElementById(placeId);
-
+        
         if (results[index]) {
             const player = results[index];
             placeElement.querySelector('.player-name').textContent = player.name;
@@ -811,12 +1068,12 @@ async function leaveGame() {
 function resetGameState() {
     stopTimer();
     stopMonitoringUpdates();
-
+    
     // Limpiar listener de Firebase
     if (gameState.gameListener && gameState.gameCode) {
         window.firebaseManager.removeListener(gameState.gameCode);
     }
-
+    
     gameState = {
         isHost: false,
         gameCode: '',
@@ -833,6 +1090,7 @@ function resetGameState() {
         results: [],
         gameListener: null
     };
+    
     // Limpiar estado de monitoreo
     hostMonitoringState = {
         gameStartTime: null,
@@ -842,35 +1100,41 @@ function resetGameState() {
     };
 }
 
+// ==================== FUNCIONES DE DEBUG ====================
+
 // Funciones de utilidad para debugging
 window.gameState = gameState;
 window.debugFunctions = {
     showScreen: showScreen,
+    
     createDemoGame: async () => {
         // Simular creacion de partida demo
         document.getElementById('host-username').value = 'Jugador1';
         document.getElementById('game-name').value = 'Partida Demo';
         await createGame();
     },
+    
     joinDemoGame: async (gameCode) => {
         // Simular union a partida demo
         document.getElementById('player-username').value = 'Jugador2';
         document.getElementById('game-code').value = gameCode || 'DEMO01';
         await joinGame();
     },
+    
     getFirebaseManager: () => window.firebaseManager,
+    
     diagnosticTest: async () => {
         console.log('DIAGNOSTICO COMPLETO DEL SISTEMA');
         console.log('=====================================');
-
+        
         // 1. Verificar carga de Firebase
         console.log('1. Firebase Manager:', !!window.firebaseManager);
-
+        
         if (!window.firebaseManager) {
             console.error('Firebase Manager no está cargado');
             return;
         }
-
+        
         // 2. Test de conectividad
         console.log('2. Testeando conectividad...');
         try {
@@ -883,20 +1147,20 @@ window.debugFunctions = {
                 maxPlayers: 2,
                 status: 'waiting'
             };
-
+            
             console.log(`Creando partida de test: ${testCode}`);
             const createResult = await window.firebaseManager.createGame(testData);
             console.log(`Creación exitosa:`, createResult);
-
+            
             if (createResult) {
                 console.log(`Buscando partida de test: ${testCode}`);
                 const findResult = await window.firebaseManager.joinGame(testCode);
                 console.log(`Búsqueda exitosa:`, findResult);
-
+                
                 // Limpiar partida de test
                 await window.firebaseManager.deleteGame(testCode);
                 console.log(`Partida de test eliminada`);
-
+                
                 if (findResult) {
                     console.log('DIAGNOSTICO: SISTEMA FUNCIONANDO CORRECTAMENTE');
                 } else {
@@ -905,29 +1169,30 @@ window.debugFunctions = {
             } else {
                 console.error('DIAGNOSTICO: ERROR EN CREACION DE PARTIDAS');
             }
-
+            
         } catch (error) {
             console.error('DIAGNOSTICO: ERROR DE CONECTIVIDAD', error);
         }
-
+        
         console.log('=====================================');
         console.log('Diagnóstico completado');
     },
+    
     listAllGames: async () => {
         console.log('LISTADO DE PARTIDAS ACTIVAS');
         console.log('==============================');
-
+        
         // Esto requiere acceso directo a Firebase
         try {
             // Importar Firebase directamente para debug
             const { ref, get } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
             const gamesRef = ref(window.firebaseManager.database, 'games');
             const snapshot = await get(gamesRef);
-
+            
             if (snapshot.exists()) {
                 const games = snapshot.val();
                 console.log('Partidas encontradas:', Object.keys(games).length);
-
+                
                 Object.entries(games).forEach(([code, data]) => {
                     console.log(`${code}:`, {
                         nombre: data.name,
@@ -943,23 +1208,24 @@ window.debugFunctions = {
         } catch (error) {
             console.error('Error al listar partidas:', error);
         }
-
+        
         console.log('==============================');
     },
+    
     checkPlayersStatus: async (gameCode) => {
         if (!gameCode) gameCode = gameState.gameCode;
         if (!gameCode) {
             console.log('No hay código de partida activo');
             return;
         }
-
+        
         console.log('VERIFICANDO ESTADO DE JUGADORES');
         console.log('================================');
-
+        
         try {
             const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameCode);
             console.log(`Resultado final: Todos terminaron = ${allFinished}`);
-
+            
             if (allFinished && gameState.isHost) {
                 console.log('MANUALMENTE FINALIZANDO PARTIDA COMO HOST...');
                 const finalResults = await window.firebaseManager.finishGame(gameCode);
@@ -968,230 +1234,15 @@ window.debugFunctions = {
         } catch (error) {
             console.error('Error al verificar estado:', error);
         }
-
+        
         console.log('================================');
-    }
-};
-
-// Modificar la función setupGameListener original para usar la nueva versión
-function setupGameListener() {
-    setupGameListenerWithMonitoring();
-}
-
-// Modificar initializeEventListeners para incluir el nuevo botón
-function initializeEventListeners() {
-    // Pantalla principal
-    document.getElementById('create-game-btn').addEventListener('click', () => showScreen('createGame'));
-    document.getElementById('join-game-btn').addEventListener('click', () => showScreen('joinGame'));
-
-    // Crear partida
-    document.getElementById('create-confirm-btn').addEventListener('click', createGame);
-    document.getElementById('back-from-create-btn').addEventListener('click', () => showScreen('home'));
-
-    // Unirse a partida
-    document.getElementById('join-confirm-btn').addEventListener('click', joinGame);
-    document.getElementById('back-from-join-btn').addEventListener('click', () => showScreen('home'));
-
-    // Lobby del host - CAMBIO AQUÍ: usar startGameAsHost en lugar de startGame
-    document.getElementById('start-game-btn').addEventListener('click', startGameAsHost);
-    document.getElementById('cancel-game-btn').addEventListener('click', cancelGame);
-
-    // Lobby del jugador
-    document.getElementById('leave-game-btn').addEventListener('click', leaveGame);
-
-    // Botones de respuesta
-    document.querySelectorAll('.answer-btn').forEach(btn => {
-        btn.addEventListener('click', selectAnswer);
-    });
-
-    // Nueva partida
-    document.getElementById('new-game-btn').addEventListener('click', () => showScreen('home'));
-
-    // Validacion en tiempo real
-    setupInputValidation();
-}
-
-// 2. Modificar la función createGame para usar el nuevo listener:
-async function createGame() {
-    const username = document.getElementById('host-username').value.trim();
-    const gameName = document.getElementById('game-name').value.trim();
-    const maxPlayers = parseInt(document.getElementById('max-players').value);
-
-    if (username.length < 2 || gameName.length < 3) {
-        alert('Por favor, completa todos los campos correctamente.');
-        return;
-    }
-
-    // Mostrar loading
-    const button = document.getElementById('create-confirm-btn');
-    const originalText = button.textContent;
-    button.textContent = 'Creando...';
-    button.disabled = true;
-
-    try {
-        // Configurar estado del juego
-        gameState.isHost = true;
-        gameState.gameCode = generateGameCode();
-        gameState.gameName = gameName;
-        gameState.username = username;
-        gameState.maxPlayers = maxPlayers;
-        gameState.players = [{
-            id: 'host',
-            name: username,
-            isHost: true,
-            score: 0,
-            ready: true
-        }];
-
-        // Crear partida en Firebase
-        const gameData = {
-            code: gameState.gameCode,
-            name: gameState.gameName,
-            host: username,
-            players: gameState.players,
-            maxPlayers: maxPlayers,
-            status: 'waiting'
-        };
-
-        const success = await window.firebaseManager.createGame(gameData);
-
-        if (success) {
-            // Configurar listener para cambios en la partida - USAR LA NUEVA VERSIÓN
-            setupGameListenerWithMonitoring();
-
-            // Actualizar UI del lobby
-            updateHostLobby();
-            showScreen('hostLobby');
-        } else {
-            throw new Error('No se pudo crear la partida');
-        }
-    } catch (error) {
-        console.error('Error al crear partida:', error);
-        alert('Error al crear la partida. Inténtalo de nuevo.');
-    } finally {
-        button.textContent = originalText;
-        button.disabled = false;
-    }
-}
-
-// 3. Modificar la función joinGame para usar el nuevo listener:
-async function joinGame() {
-    const username = document.getElementById('player-username').value.trim();
-    const gameCode = document.getElementById('game-code').value.trim();
-
-    if (username.length < 2 || gameCode.length !== 6) {
-        alert('Por favor, completa todos los campos correctamente.');
-        return;
-    }
-
-    // Mostrar loading
-    const button = document.getElementById('join-confirm-btn');
-    const originalText = button.textContent;
-    button.textContent = 'Conectando...';
-    button.disabled = true;
-
-    try {
-        console.log(`Intentando unirse a partida: ${gameCode}`);
-        console.log(`Usuario: ${username}`);
-        console.log(`Firebase Manager disponible:`, !!window.firebaseManager);
-
-        // Verificar si Firebase está cargado
-        if (!window.firebaseManager) {
-            throw new Error('Firebase no está cargado. Recarga la página.');
-        }
-
-        // Verificar si la partida existe
-        console.log(`Verificando existencia de partida...`);
-        const gameExists = await window.firebaseManager.joinGame(gameCode);
-        console.log(`Partida existe:`, gameExists);
-
-        if (!gameExists) {
-            alert(`No se encontró una partida con el código: ${gameCode}\n\nVerifica:\n- Que el código sea correcto\n- Que la partida esté activa\n- Tu conexión a internet`);
-            return;
-        }
-
-        // Configurar estado del jugador
-        gameState.isHost = false;
-        gameState.gameCode = gameCode;
-        gameState.username = username;
-
-        // Crear datos del nuevo jugador
-        const newPlayer = {
-            id: 'player_' + Date.now(),
-            name: username,
-            isHost: false,
-            score: 0,
-            ready: true
-        };
-
-        console.log(`Agregando jugador:`, newPlayer);
-
-        // Intentar agregar jugador a la partida
-        const success = await window.firebaseManager.addPlayer(gameCode, newPlayer);
-        console.log(`Jugador agregado:`, success);
-
-        if (success) {
-            // Configurar listener para cambios en la partida - USAR LA NUEVA VERSIÓN
-            setupGameListenerWithMonitoring();
-            showScreen('playerLobby');
-        } else {
-            alert('Ya hay un jugador con ese nombre en la partida o la partida está llena.');
-        }
-    } catch (error) {
-        console.error('Error completo al unirse a partida:', error);
-        console.error('Stack trace:', error.stack);
-        alert(`Error al conectarse a la partida:\n${error.message}\n\nRevisa la consola para más detalles.`);
-    } finally {
-        button.textContent = originalText;
-        button.disabled = false;
-    }
-}
-
-// 4. Modificar resetGameState para limpiar también el estado de monitoreo:
-function resetGameState() {
-    stopTimer();
-    stopMonitoringUpdates(); // Agregar esta línea
-
-    // Limpiar listener de Firebase
-    if (gameState.gameListener && gameState.gameCode) {
-        window.firebaseManager.removeListener(gameState.gameCode);
-    }
-
-    gameState = {
-        isHost: false,
-        gameCode: '',
-        gameName: '',
-        username: '',
-        players: [],
-        currentQuestions: [],
-        currentQuestionIndex: 0,
-        score: 0,
-        timer: null,
-        timeRemaining: 30,
-        gameInProgress: false,
-        selectedAnswer: null,
-        results: [],
-        gameListener: null
-    };
-
-    // Limpiar estado de monitoreo
-    hostMonitoringState = {
-        gameStartTime: null,
-        currentQuestionStartTime: null,
-        gameEvents: [],
-        updateInterval: null
-    };
-}
-
-// 5. Agregar funciones de debug adicionales:
-window.debugFunctions = {
-    ...window.debugFunctions, // Mantener las funciones existentes
-
+    },
+    
     // Nueva función para testear monitoreo
     testHostMonitoring: () => {
         console.log('TESTEANDO MONITOREO DEL HOST');
         console.log('==============================');
-
+        
         // Simular que somos host
         gameState.isHost = true;
         gameState.gameCode = 'TEST01';
@@ -1202,14 +1253,14 @@ window.debugFunctions = {
             { name: 'Jugador2', isHost: false, score: 200, finished: true },
             { name: 'Jugador3', isHost: false, score: 0, finished: false }
         ];
-
+        
         // Simular preguntas
         gameState.currentQuestions = getRandomQuestions(5);
         gameState.currentQuestionIndex = 2;
-
+        
         // Inicializar monitoreo
         hostMonitoringState.gameStartTime = Date.now() - 120000; // 2 minutos atrás
-
+        
         // Agregar algunos eventos de prueba
         addGameEvent('success', 'Partida iniciada correctamente');
         addGameEvent('info', 'Jugador1 se unió a la partida');
@@ -1217,23 +1268,23 @@ window.debugFunctions = {
         addGameEvent('info', 'Jugador3 se unió a la partida');
         addGameEvent('success', 'Jugador2 terminó la partida con 200 puntos');
         addGameEvent('warning', 'Jugador3 está tardando mucho en responder');
-
+        
         // Mostrar pantalla de monitoreo
         initializeHostMonitoring();
         showScreen('hostMonitoring');
         startMonitoringUpdates();
-
+        
         console.log('Monitoreo del host activado');
         console.log('Estado del juego:', gameState);
         console.log('Estado de monitoreo:', hostMonitoringState);
     },
-
+    
     // Función para simular finalización forzada
     simulateForceFinish: async () => {
         console.log('Simulando finalización forzada...');
         await forceFinishGame();
     },
-
+    
     // Función para ver estado actual del monitoreo
     getMonitoringState: () => {
         console.log('ESTADO ACTUAL DEL MONITOREO');
@@ -1246,9 +1297,9 @@ window.debugFunctions = {
     }
 };
 
-// Actualizar el mensaje de ayuda en consola
+// Mensaje de ayuda en consola
 console.log(`
-FUNCIONES DE DEBUG ACTUALIZADAS:
+FUNCIONES DE DEBUG DISPONIBLES:
 ==================================
 debugFunctions.diagnosticTest()       - Diagnóstico completo del sistema
 debugFunctions.listAllGames()         - Listar todas las partidas activas
