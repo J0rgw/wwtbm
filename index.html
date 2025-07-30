@@ -183,6 +183,32 @@
         </div>
     </div>
 
+    <!-- Pantalla de espera -->
+    <div id="waiting-screen" class="screen">
+        <div class="container">
+            <h2>Partida Finalizada</h2>
+            
+            <div class="waiting-info">
+                <div class="score-display">
+                    <h3>Tu puntuacion final:</h3>
+                    <div class="final-score" id="player-final-score">0 puntos</div>
+                </div>
+
+                <div class="waiting-status">
+                    <h3>Esperando a otros jugadores...</h3>
+                    <div class="players-status" id="players-waiting-status">
+                        <!-- Se llenara dinamicamente -->
+                    </div>
+                </div>
+
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Los resultados se mostraran cuando todos terminen</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Pantalla de resultados -->
     <div id="results-screen" class="screen">
         <div class="container">

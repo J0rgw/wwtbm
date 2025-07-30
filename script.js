@@ -24,6 +24,7 @@ const screens = {
     hostLobby: document.getElementById('host-lobby-screen'),
     playerLobby: document.getElementById('player-lobby-screen'),
     game: document.getElementById('game-screen'),
+    waiting: document.getElementById('waiting-screen'),
     results: document.getElementById('results-screen')
 };
 
@@ -301,6 +302,19 @@ function setupGameListener() {
             displayQuestion();
             startTimer();
         }
+
+        // Verificar si el juego ha terminado
+        if (gameData.status === 'finished' && gameState.gameInProgress) {
+            gameState.gameInProgress = false;
+            gameState.results = gameData.finalResults || [];
+            displayResults();
+            showScreen('results');
+        }
+
+        // Actualizar pantalla de espera si está activa
+        if (screens.waiting.classList.contains('active')) {
+            updateWaitingScreen(gameData);
+        }
     });
 }
 
@@ -536,9 +550,69 @@ function nextQuestion() {
 }
 
 // Finalizar juego
-function endGame() {
+async function endGame() {
     gameState.gameInProgress = false;
     
+    try {
+        // Guardar puntuación del jugador en Firebase
+        await window.firebaseManager.updatePlayerScore(
+            gameState.gameCode, 
+            gameState.username, 
+            gameState.score
+        );
+
+        // Mostrar pantalla de espera
+        showWaitingScreen();
+
+        // Verificar si todos los jugadores han terminado
+        const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameState.gameCode);
+        
+        if (allFinished && gameState.isHost) {
+            // Si soy el host y todos terminaron, finalizar la partida
+            setTimeout(async () => {
+                const finalResults = await window.firebaseManager.finishGame(gameState.gameCode);
+                // Los resultados se mostrarán automáticamente por el listener
+            }, 2000); // Pequeño delay para asegurar sincronización
+        }
+    } catch (error) {
+        console.error('Error al finalizar juego:', error);
+        // Fallback a resultados locales
+        showLocalResults();
+    }
+}
+
+// Mostrar pantalla de espera
+function showWaitingScreen() {
+    document.getElementById('player-final-score').textContent = `${gameState.score} puntos`;
+    updateWaitingScreen();
+    showScreen('waiting');
+}
+
+// Actualizar pantalla de espera
+function updateWaitingScreen(gameData = null) {
+    const statusContainer = document.getElementById('players-waiting-status');
+    statusContainer.innerHTML = '';
+
+    const players = gameData ? gameData.players : gameState.players;
+    
+    players.forEach(player => {
+        const statusElement = document.createElement('div');
+        statusElement.className = 'player-status-item';
+        
+        const isFinished = player.finished === true;
+        const statusClass = isFinished ? 'status-finished' : 'status-playing';
+        const statusText = isFinished ? 'Terminado' : 'Jugando...';
+        
+        statusElement.innerHTML = `
+            <span class="player-status-name">${player.name}</span>
+            <span class="${statusClass}">${statusText}</span>
+        `;
+        statusContainer.appendChild(statusElement);
+    });
+}
+
+// Mostrar resultados locales (fallback)
+function showLocalResults() {
     // Simular resultados de otros jugadores para demo
     const finalResults = [
         { name: gameState.username, score: gameState.score, position: 1 }
@@ -581,7 +655,7 @@ function displayResults() {
         if (results[index]) {
             const player = results[index];
             placeElement.querySelector('.player-name').textContent = player.name;
-            placeElement.querySelector('.player-score').textContent = `${player.score} puntos`;
+            placeElement.querySelector('.player-score').textContent = `${player.score || 0} puntos`;
             placeElement.style.display = 'block';
         } else {
             placeElement.style.display = 'none';
@@ -598,7 +672,7 @@ function displayResults() {
         resultElement.innerHTML = `
             <span class="result-position">${index + 1}°</span>
             <span class="result-name">${player.name}</span>
-            <span class="result-score">${player.score} puntos</span>
+            <span class="result-score">${player.score || 0} puntos</span>
         `;
         resultsList.appendChild(resultElement);
     });

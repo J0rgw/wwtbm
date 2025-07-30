@@ -186,7 +186,91 @@ class FirebaseGameManager {
         }
     }
 
-    // Eliminar partida completa
+    // Actualizar puntuación de un jugador
+    async updatePlayerScore(gameCode, playerName, score) {
+        try {
+            const gameRef = ref(this.database, `games/${gameCode}`);
+            
+            return new Promise((resolve) => {
+                onValue(gameRef, async (snapshot) => {
+                    const gameData = snapshot.val();
+                    if (gameData && gameData.players) {
+                        const updatedPlayers = gameData.players.map(player => {
+                            if (player.name === playerName) {
+                                return { ...player, score: score, finished: true };
+                            }
+                            return player;
+                        });
+                        
+                        await set(gameRef, {
+                            ...gameData,
+                            players: updatedPlayers
+                        });
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                }, { onlyOnce: true });
+            });
+        } catch (error) {
+            console.error('Error al actualizar puntuación:', error);
+            return false;
+        }
+    }
+
+    // Verificar si todos los jugadores han terminado
+    async checkAllPlayersFinished(gameCode) {
+        try {
+            const gameRef = ref(this.database, `games/${gameCode}`);
+            
+            return new Promise((resolve) => {
+                onValue(gameRef, (snapshot) => {
+                    const gameData = snapshot.val();
+                    if (gameData && gameData.players) {
+                        const allFinished = gameData.players.every(player => player.finished === true);
+                        resolve(allFinished);
+                    } else {
+                        resolve(false);
+                    }
+                }, { onlyOnce: true });
+            });
+        } catch (error) {
+            console.error('Error al verificar jugadores terminados:', error);
+            return false;
+        }
+    }
+
+    // Finalizar partida y marcar como completada
+    async finishGame(gameCode) {
+        try {
+            const gameRef = ref(this.database, `games/${gameCode}`);
+            
+            return new Promise((resolve) => {
+                onValue(gameRef, async (snapshot) => {
+                    const gameData = snapshot.val();
+                    if (gameData) {
+                        // Ordenar jugadores por puntuación
+                        const sortedPlayers = [...gameData.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+                        
+                        await set(gameRef, {
+                            ...gameData,
+                            status: 'finished',
+                            finalResults: sortedPlayers,
+                            finishedAt: Date.now()
+                        });
+                        resolve(sortedPlayers);
+                    } else {
+                        resolve([]);
+                    }
+                }, { onlyOnce: true });
+            });
+        } catch (error) {
+            console.error('Error al finalizar partida:', error);
+            return [];
+        }
+    }
+
+    // Eliminar partida
     async deleteGame(gameCode) {
         try {
             const gameRef = ref(this.database, `games/${gameCode}`);
