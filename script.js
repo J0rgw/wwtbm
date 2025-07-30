@@ -294,7 +294,7 @@ function setupGameListener() {
             updatePlayerLobby();
         }
 
-        // Verificar si el juego ha comenzado
+        // Verificar si el juego ha comenzado (solo si no estamos ya jugando)
         if (gameData.status === 'playing' && !gameState.gameInProgress) {
             gameState.currentQuestions = gameData.questions;
             gameState.gameInProgress = true;
@@ -304,15 +304,19 @@ function setupGameListener() {
         }
 
         // Verificar si el juego ha terminado
-        if (gameData.status === 'finished' && gameState.gameInProgress) {
+        if (gameData.status === 'finished') {
+            // Detener cualquier timer activo
+            stopTimer();
             gameState.gameInProgress = false;
             gameState.results = gameData.finalResults || [];
+            console.log('Juego terminado, mostrando resultados:', gameState.results);
             displayResults();
             showScreen('results');
+            return; // Salir temprano para evitar otras actualizaciones
         }
 
-        // Actualizar pantalla de espera si está activa
-        if (screens.waiting.classList.contains('active')) {
+        // Actualizar pantalla de espera si está activa (solo si el juego no ha terminado)
+        if (screens.waiting.classList.contains('active') && gameData.status !== 'finished') {
             updateWaitingScreen(gameData);
         }
     });
@@ -410,7 +414,21 @@ async function startGame() {
 
 // Mostrar pregunta actual
 function displayQuestion() {
+    // Verificar que tengamos preguntas y una pregunta válida
+    if (!gameState.currentQuestions || 
+        gameState.currentQuestionIndex >= gameState.currentQuestions.length ||
+        !gameState.currentQuestions[gameState.currentQuestionIndex]) {
+        console.error('Error: No hay pregunta válida para mostrar');
+        return;
+    }
+
     const question = gameState.currentQuestions[gameState.currentQuestionIndex];
+    
+    // Verificar que la pregunta tenga la estructura correcta
+    if (!question.question || !question.answers) {
+        console.error('Error: Estructura de pregunta inválida', question);
+        return;
+    }
     
     document.getElementById('current-question').textContent = gameState.currentQuestionIndex + 1;
     document.getElementById('question-text').textContent = question.question;
@@ -422,10 +440,12 @@ function displayQuestion() {
         const answerKey = ['a', 'b', 'c', 'd'][index];
         const answerText = question.answers[answerKey];
         
-        btn.querySelector('.answer-text').textContent = answerText;
-        btn.disabled = false;
-        btn.className = 'answer-btn'; // Reset clases
-        btn.dataset.answer = answerKey;
+        if (answerText) {
+            btn.querySelector('.answer-text').textContent = answerText;
+            btn.disabled = false;
+            btn.className = 'answer-btn'; // Reset clases
+            btn.dataset.answer = answerKey;
+        }
     });
 
     gameState.selectedAnswer = null;
@@ -551,10 +571,15 @@ function nextQuestion() {
 
 // Finalizar juego
 async function endGame() {
+    console.log('Finalizando juego para:', gameState.username);
+    
+    // Detener timer y marcar como no en progreso
+    stopTimer();
     gameState.gameInProgress = false;
     
     try {
         // Guardar puntuación del jugador en Firebase
+        console.log('Guardando puntuación:', gameState.score);
         await window.firebaseManager.updatePlayerScore(
             gameState.gameCode, 
             gameState.username, 
@@ -564,15 +589,21 @@ async function endGame() {
         // Mostrar pantalla de espera
         showWaitingScreen();
 
-        // Verificar si todos los jugadores han terminado
-        const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameState.gameCode);
-        
-        if (allFinished && gameState.isHost) {
-            // Si soy el host y todos terminaron, finalizar la partida
+        // Solo el host verifica si todos terminaron
+        if (gameState.isHost) {
+            console.log('Soy el host, verificando si todos terminaron...');
+            
+            // Esperar un poco para asegurar que la actualización se propagó
             setTimeout(async () => {
-                const finalResults = await window.firebaseManager.finishGame(gameState.gameCode);
-                // Los resultados se mostrarán automáticamente por el listener
-            }, 2000); // Pequeño delay para asegurar sincronización
+                const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameState.gameCode);
+                console.log('Todos los jugadores terminaron:', allFinished);
+                
+                if (allFinished) {
+                    console.log('Finalizando partida como host...');
+                    const finalResults = await window.firebaseManager.finishGame(gameState.gameCode);
+                    console.log('Resultados finales:', finalResults);
+                }
+            }, 3000); // 3 segundos de delay
         }
     } catch (error) {
         console.error('Error al finalizar juego:', error);
@@ -591,9 +622,13 @@ function showWaitingScreen() {
 // Actualizar pantalla de espera
 function updateWaitingScreen(gameData = null) {
     const statusContainer = document.getElementById('players-waiting-status');
+    if (!statusContainer) return;
+    
     statusContainer.innerHTML = '';
 
     const players = gameData ? gameData.players : gameState.players;
+    
+    if (!players || players.length === 0) return;
     
     players.forEach(player => {
         const statusElement = document.createElement('div');
