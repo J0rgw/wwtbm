@@ -507,3 +507,305 @@ body {
         order: 3;
     }
 }
+/* Estilos para la pantalla de monitoreo del host */
+.monitoring-header {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    border-left: 5px solid #ffd700;
+}
+
+.monitoring-header h2 {
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-align: center;
+}
+
+.game-info-monitoring {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.game-status {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.game-status.finished {
+    color: #ffd700;
+}
+
+.game-status.waiting {
+    color: #00d4ff;
+}
+
+.monitoring-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.current-question-info {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.current-question-info h3 {
+    margin-bottom: 15px;
+    color: #00d4ff;
+}
+
+.question-display {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.question-number {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #ffd700;
+    text-align: center;
+}
+
+.question-text-monitoring {
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-bottom: 15px;
+    text-align: center;
+    color: #ffffff;
+}
+
+.question-answers-monitoring {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.answer-preview {
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    border-left: 3px solid #666;
+}
+
+.answer-preview.correct {
+    border-left-color: #00ff00;
+    background: rgba(0,255,0,0.1);
+}
+
+.players-monitoring {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.players-monitoring h3 {
+    margin-bottom: 15px;
+    color: #00d4ff;
+}
+
+.players-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.player-monitoring-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    border-left: 4px solid #666;
+}
+
+.player-monitoring-item.playing {
+    border-left-color: #00ff00;
+}
+
+.player-monitoring-item.finished {
+    border-left-color: #ffd700;
+}
+
+.player-monitoring-item.disconnected {
+    border-left-color: #ff4444;
+    opacity: 0.7;
+}
+
+.player-info-monitoring {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.player-name-monitoring {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.player-status-monitoring {
+    font-size: 0.8rem;
+    color: #cccccc;
+}
+
+.player-stats-monitoring {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.player-score-monitoring {
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.player-progress-monitoring {
+    font-size: 0.8rem;
+    color: #cccccc;
+}
+
+.game-statistics {
+    grid-column: 1 / -1;
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.game-statistics h3 {
+    margin-bottom: 15px;
+    color: #00d4ff;
+    text-align: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+}
+
+.stat-label {
+    color: #cccccc;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.monitoring-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.menu-btn.emergency {
+    background: linear-gradient(45deg, #ff4444, #cc0000);
+    color: white;
+}
+
+.menu-btn.emergency:hover {
+    background: linear-gradient(45deg, #cc0000, #990000);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 68, 68, 0.3);
+}
+
+.monitoring-log {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.monitoring-log h3 {
+    margin-bottom: 15px;
+    color: #00d4ff;
+}
+
+.log-container {
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+}
+
+.log-entry {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.log-time {
+    color: #666;
+    min-width: 60px;
+}
+
+.log-message {
+    color: #ffffff;
+}
+
+.log-entry.info .log-message {
+    color: #00d4ff;
+}
+
+.log-entry.success .log-message {
+    color: #00ff00;
+}
+
+.log-entry.warning .log-message {
+    color: #ffd700;
+}
+
+.log-entry.error .log-message {
+    color: #ff4444;
+}
+
+/* Responsive para monitoreo */
+@media (max-width: 1024px) {
+    .monitoring-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .game-info-monitoring {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .monitoring-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .menu-btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .question-answers-monitoring {
+        grid-template-columns: 1fr;
+    }
+}
