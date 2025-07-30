@@ -13,7 +13,7 @@ let gameState = {
     gameInProgress: false,
     selectedAnswer: null,
     results: [],
-    gameListener: null // Para Firebase listener
+    gameListener: null
 };
 
 // Referencias a elementos del DOM
@@ -777,7 +777,7 @@ function resetGameState() {
 // Funciones de utilidad para debugging
 window.gameState = gameState;
 window.debugFunctions = {
-    showScreen,
+    showScreen: showScreen,
     createDemoGame: async () => {
         // Simular creacion de partida demo
         document.getElementById('host-username').value = 'Jugador1';
@@ -791,8 +791,6 @@ window.debugFunctions = {
         await joinGame();
     },
     getFirebaseManager: () => window.firebaseManager,
-    
-    // Nueva función de diagnóstico completo
     diagnosticTest: async () => {
         console.log('DIAGNOSTICO COMPLETO DEL SISTEMA');
         console.log('=====================================');
@@ -847,8 +845,6 @@ window.debugFunctions = {
         console.log('=====================================');
         console.log('Diagnóstico completado');
     },
-    
-    // Función para listar todas las partidas activas
     listAllGames: async () => {
         console.log('LISTADO DE PARTIDAS ACTIVAS');
         console.log('==============================');
@@ -881,6 +877,31 @@ window.debugFunctions = {
         }
         
         console.log('==============================');
+    },
+    checkPlayersStatus: async (gameCode) => {
+        if (!gameCode) gameCode = gameState.gameCode;
+        if (!gameCode) {
+            console.log('No hay código de partida activo');
+            return;
+        }
+        
+        console.log('VERIFICANDO ESTADO DE JUGADORES');
+        console.log('================================');
+        
+        try {
+            const allFinished = await window.firebaseManager.checkAllPlayersFinished(gameCode);
+            console.log(`Resultado final: Todos terminaron = ${allFinished}`);
+            
+            if (allFinished && gameState.isHost) {
+                console.log('MANUALMENTE FINALIZANDO PARTIDA COMO HOST...');
+                const finalResults = await window.firebaseManager.finishGame(gameCode);
+                console.log('Resultados:', finalResults);
+            }
+        } catch (error) {
+            console.error('Error al verificar estado:', error);
+        }
+        
+        console.log('================================');
     }
 };
 
@@ -888,10 +909,15 @@ window.debugFunctions = {
 console.log(`
 FUNCIONES DE DEBUG DISPONIBLES:
 ==================================
-debugFunctions.diagnosticTest()     - Diagnóstico completo del sistema
-debugFunctions.listAllGames()       - Listar todas las partidas activas
-debugFunctions.createDemoGame()     - Crear partida de prueba
-debugFunctions.joinDemoGame(code)   - Unirse a partida con código
-debugFunctions.getFirebaseManager() - Acceder al manager de Firebase
-gameState                          - Ver estado actual del juego
+debugFunctions.diagnosticTest()       - Diagnóstico completo del sistema
+debugFunctions.listAllGames()         - Listar todas las partidas activas
+debugFunctions.createDemoGame()       - Crear partida de prueba
+debugFunctions.joinDemoGame(code)     - Unirse a partida con código
+debugFunctions.getFirebaseManager()   - Acceder al manager de Firebase
+debugFunctions.checkPlayersStatus()   - Verificar estado de jugadores
+gameState                            - Ver estado actual del juego
+
+PARA RESOLVER PROBLEMA DE PANTALLA:
+Si todos terminaron pero no se muestra el resultado:
+debugFunctions.checkPlayersStatus()
 `);

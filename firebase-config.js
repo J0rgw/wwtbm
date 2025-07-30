@@ -6,7 +6,7 @@ import { getDatabase, ref, set, onValue, push, remove, off } from 'https://www.g
 const firebaseConfig = {
     apiKey: "AIzaSyDRqhoejBBl1tdinweT56GP2Y3bc67uq2Q",
     authDomain: "wwtbm-f8f64.firebaseapp.com",
-    databaseURL: "https://wwtbm-f8f64-default-rtdb.europe-west1.firebasedatabase.app/", // URL actualizada para Europa
+    databaseURL: "https://wwtbm-f8f64-default-rtdb.europe-west1.firebasedatabase.app/",
     projectId: "wwtbm-f8f64",
     storageBucket: "wwtbm-f8f64.firebasestorage.app",
     messagingSenderId: "217823605706",
@@ -189,25 +189,47 @@ class FirebaseGameManager {
     // Actualizar puntuación de un jugador
     async updatePlayerScore(gameCode, playerName, score) {
         try {
+            console.log(`Actualizando puntuación de ${playerName}: ${score} puntos`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             
             return new Promise((resolve) => {
                 onValue(gameRef, async (snapshot) => {
                     const gameData = snapshot.val();
                     if (gameData && gameData.players) {
+                        console.log('Jugadores antes de actualizar:', gameData.players.map(p => ({
+                            name: p.name,
+                            finished: p.finished,
+                            score: p.score
+                        })));
+                        
                         const updatedPlayers = gameData.players.map(player => {
                             if (player.name === playerName) {
-                                return { ...player, score: score, finished: true };
+                                return { 
+                                    ...player, 
+                                    score: score, 
+                                    finished: true,
+                                    finishedAt: Date.now()
+                                };
                             }
                             return player;
                         });
                         
+                        console.log('Jugadores después de actualizar:', updatedPlayers.map(p => ({
+                            name: p.name,
+                            finished: p.finished,
+                            score: p.score
+                        })));
+                        
                         await set(gameRef, {
                             ...gameData,
-                            players: updatedPlayers
+                            players: updatedPlayers,
+                            lastUpdate: Date.now()
                         });
+                        
+                        console.log(`Puntuación actualizada exitosamente para ${playerName}`);
                         resolve(true);
                     } else {
+                        console.error('No se encontraron datos de juego o jugadores');
                         resolve(false);
                     }
                 }, { onlyOnce: true });
@@ -221,15 +243,33 @@ class FirebaseGameManager {
     // Verificar si todos los jugadores han terminado
     async checkAllPlayersFinished(gameCode) {
         try {
+            console.log(`Verificando si todos terminaron en: ${gameCode}`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             
             return new Promise((resolve) => {
                 onValue(gameRef, (snapshot) => {
                     const gameData = snapshot.val();
                     if (gameData && gameData.players) {
-                        const allFinished = gameData.players.every(player => player.finished === true);
+                        console.log('Jugadores actuales:', gameData.players.map(p => ({
+                            name: p.name,
+                            finished: p.finished,
+                            score: p.score
+                        })));
+                        
+                        const playersWithFinishedStatus = gameData.players.filter(p => p.finished !== undefined);
+                        const finishedPlayers = gameData.players.filter(p => p.finished === true);
+                        
+                        console.log(`Jugadores con estado: ${playersWithFinishedStatus.length}`);
+                        console.log(`Jugadores terminados: ${finishedPlayers.length}`);
+                        console.log(`Total jugadores: ${gameData.players.length}`);
+                        
+                        // Todos han terminado si el número de jugadores terminados es igual al total
+                        const allFinished = finishedPlayers.length === gameData.players.length && finishedPlayers.length > 0;
+                        console.log(`Resultado: todos terminaron = ${allFinished}`);
+                        
                         resolve(allFinished);
                     } else {
+                        console.log('No se encontraron datos de juego o jugadores');
                         resolve(false);
                     }
                 }, { onlyOnce: true });
@@ -243,6 +283,7 @@ class FirebaseGameManager {
     // Finalizar partida y marcar como completada
     async finishGame(gameCode) {
         try {
+            console.log(`Finalizando partida: ${gameCode}`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             
             return new Promise((resolve) => {
@@ -252,14 +293,22 @@ class FirebaseGameManager {
                         // Ordenar jugadores por puntuación
                         const sortedPlayers = [...gameData.players].sort((a, b) => (b.score || 0) - (a.score || 0));
                         
+                        console.log('Resultados finales ordenados:', sortedPlayers.map(p => ({
+                            name: p.name,
+                            score: p.score || 0
+                        })));
+                        
                         await set(gameRef, {
                             ...gameData,
                             status: 'finished',
                             finalResults: sortedPlayers,
                             finishedAt: Date.now()
                         });
+                        
+                        console.log('Partida finalizada exitosamente');
                         resolve(sortedPlayers);
                     } else {
+                        console.error('No se encontraron datos de partida para finalizar');
                         resolve([]);
                     }
                 }, { onlyOnce: true });
@@ -270,12 +319,14 @@ class FirebaseGameManager {
         }
     }
 
-    // Eliminar partida
+    // Eliminar partida completa
     async deleteGame(gameCode) {
         try {
+            console.log(`Eliminando partida: ${gameCode}`);
             const gameRef = ref(this.database, `games/${gameCode}`);
             await remove(gameRef);
             this.removeListener(gameCode);
+            console.log('Partida eliminada exitosamente');
             return true;
         } catch (error) {
             console.error('Error al eliminar partida:', error);
